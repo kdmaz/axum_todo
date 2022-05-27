@@ -39,7 +39,7 @@ pub async fn post(
         Ok(_) => StatusCode::CREATED,
         Err(err) => {
             if let Some(code) = err.as_database_error().and_then(|err| err.code()) {
-                // code for insert failed
+                // code for unique violation
                 if code == "23505" {
                     // return created response to prevent account enumeration
                     return StatusCode::CREATED;

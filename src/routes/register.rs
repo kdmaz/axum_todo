@@ -1,4 +1,4 @@
-use axum::{http::StatusCode, response::IntoResponse, Extension, Json};
+use axum::{http::StatusCode, Extension, Json};
 use secrecy::ExposeSecret;
 use sqlx::{query, PgPool};
 use todo::auth::{compute_password_hash, Credentials};
@@ -7,7 +7,7 @@ use uuid::Uuid;
 pub async fn post(
     Json(registration): Json<Credentials>,
     Extension(pool): Extension<PgPool>,
-) -> impl IntoResponse {
+) -> StatusCode {
     let user_id = Uuid::new_v4();
     let password_hash = match compute_password_hash(registration.password) {
         Ok(password_hash) => password_hash,

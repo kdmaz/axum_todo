@@ -1,4 +1,4 @@
-use axum::{http::StatusCode, response::IntoResponse, Extension, Json};
+use axum::{http::StatusCode, Extension, Json};
 use secrecy::Secret;
 use sqlx::{query, PgPool};
 use todo::auth::{validate_user, Credentials};
@@ -6,7 +6,7 @@ use todo::auth::{validate_user, Credentials};
 pub async fn post(
     Json(login): Json<Credentials>,
     Extension(pool): Extension<PgPool>,
-) -> impl IntoResponse {
+) -> StatusCode {
     let user = query!(
         r#"
 			SELECT email, password_hash
@@ -31,6 +31,6 @@ pub async fn post(
             // TODO - session
             StatusCode::OK
         }
-        Err(_) => StatusCode::UNAUTHORIZED,
+        Err(_) => StatusCode::UNAUTHORIZED
     }
 }

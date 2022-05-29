@@ -1,9 +1,11 @@
+use crate::user::User;
 use argon2::{
     password_hash::SaltString, Algorithm, Argon2, Params, PasswordHash, PasswordHasher,
     PasswordVerifier, Version,
 };
 use secrecy::{ExposeSecret, Secret};
 use serde::Deserialize;
+use uuid::Uuid;
 
 #[derive(Deserialize, Debug)]
 pub struct Credentials {
@@ -25,9 +27,9 @@ pub fn compute_password_hash(password: Secret<String>) -> Result<Secret<String>,
 }
 
 pub async fn validate_user(
-    password_hash: Option<Secret<String>>,
+    user: Option<User>,
     password: Secret<String>,
-) -> Result<(), anyhow::Error> {
+) -> Result<Uuid, anyhow::Error> {
     // if no password_hash, still verify_password_hash to prevent user enumeration
     // through a timing attack
     let default_password_hash = Secret::new(
@@ -36,10 +38,22 @@ pub async fn validate_user(
                 CWOrkoo7oJBQ/iyh7uJ0LO2aLEfrHwTWllSAxT0zRno"
             .to_string(),
     );
-    let expected_password_hash = password_hash.unwrap_or(default_password_hash);
 
-    tokio::task::spawn_blocking(move || verify_password_hash(expected_password_hash, password))
-        .await?
+    let mut user_password_hash = None;
+    let mut user_id = None;
+
+    if let Some(u) = user {
+        user_id = Some(u.id);
+        user_password_hash = Some(u.password_hash);
+    }
+
+    let expected_password_hash = user_password_hash.unwrap_or(default_password_hash);
+
+    let _ =
+        tokio::task::spawn_blocking(move || verify_password_hash(expected_password_hash, password))
+            .await?;
+
+    user_id.ok_or(anyhow::anyhow!("No user_id!"))
 }
 
 pub fn verify_password_hash(

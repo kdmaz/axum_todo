@@ -1170,6 +1170,7 @@ dependencies = [
  "serde",
  "sqlx",
  "tokio",
+ "tower",
  "uuid",
 ]
 

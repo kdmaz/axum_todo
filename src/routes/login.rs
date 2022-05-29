@@ -31,6 +31,6 @@ pub async fn post(
             // TODO - session
             StatusCode::OK
         }
-        Err(_) => StatusCode::UNAUTHORIZED
+        Err(_) => StatusCode::UNAUTHORIZED,
     }
 }

@@ -2,7 +2,7 @@ use async_redis_session::RedisSessionStore;
 use async_session::{Session, SessionStore};
 use axum::{
     http::{header::SET_COOKIE, StatusCode},
-    response::IntoResponse,
+    response::{IntoResponse, Response},
     Extension, Json,
 };
 use cookie::{time::Duration, Cookie, CookieJar, Key};
@@ -18,7 +18,7 @@ pub async fn post(
     Json(login): Json<Credentials>,
     Extension(pool): Extension<PgPool>,
     Extension(store): Extension<RedisSessionStore>,
-) -> impl IntoResponse {
+) -> Response {
     let user = query!(
         r#"
 			SELECT id, password_hash
@@ -37,13 +37,10 @@ pub async fn post(
 
     match validate_user(user, login.password).await {
         Ok(user_id) => match get_session_cookie(user_id, store).await {
-            Ok(cookie) => (StatusCode::OK, [(SET_COOKIE, cookie.to_string())]),
-            Err(_) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                [(SET_COOKIE, "".to_owned())],
-            ),
+            Ok(cookie) => (StatusCode::OK, [(SET_COOKIE, cookie.to_string())]).into_response(),
+            Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
         },
-        Err(_) => (StatusCode::UNAUTHORIZED, [(SET_COOKIE, "".to_owned())]),
+        Err(_) => StatusCode::UNAUTHORIZED.into_response(),
     }
 }
 

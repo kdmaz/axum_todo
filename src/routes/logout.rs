@@ -1,11 +1,11 @@
 use async_redis_session::RedisSessionStore;
 use async_session::SessionStore;
 use axum::{
-    http::{HeaderMap, StatusCode},
+    http::{header::SET_COOKIE, HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     Extension,
 };
-use cookie::{Cookie, CookieJar, Key};
+use cookie::{time::Duration, Cookie, CookieJar, Key};
 
 pub async fn post(Extension(store): Extension<RedisSessionStore>, headers: HeaderMap) -> Response {
     let cookie_header = match headers.get("cookie") {
@@ -17,17 +17,22 @@ pub async fn post(Extension(store): Extension<RedisSessionStore>, headers: Heade
         Err(_) => return StatusCode::BAD_REQUEST.into_response(),
     };
 
-    if destory_session_from_cookie(cookie_header.to_owned(), store)
+    if destroy_session_from_cookie(cookie_header.to_owned(), store)
         .await
         .is_err()
     {
         StatusCode::BAD_REQUEST.into_response()
     } else {
-        StatusCode::OK.into_response()
+        let cookie = Cookie::build("id", "")
+            .http_only(true)
+            .max_age(Duration::nanoseconds(0))
+            .path("/api")
+            .finish();
+        (StatusCode::OK, [(SET_COOKIE, cookie.to_string())]).into_response()
     }
 }
 
-async fn destory_session_from_cookie(
+async fn destroy_session_from_cookie(
     cookie_header: String,
     store: RedisSessionStore,
 ) -> Result<(), anyhow::Error> {

@@ -53,7 +53,7 @@ pub async fn validate_user(
         tokio::task::spawn_blocking(move || verify_password_hash(expected_password_hash, password))
             .await?;
 
-    user_id.ok_or(anyhow::anyhow!("No user_id!"))
+    user_id.ok_or_else(|| anyhow::anyhow!("No user_id!"))
 }
 
 pub fn verify_password_hash(

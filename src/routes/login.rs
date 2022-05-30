@@ -2,7 +2,7 @@ use async_redis_session::RedisSessionStore;
 use async_session::{Session, SessionStore};
 use axum::{
     http::{header::SET_COOKIE, StatusCode},
-    response::{AppendHeaders, IntoResponse},
+    response::IntoResponse,
     Extension, Json,
 };
 use cookie::{time::Duration, Cookie, CookieJar, Key};
@@ -37,14 +37,13 @@ pub async fn post(
 
     match validate_user(user, login.password).await {
         Ok(user_id) => match get_session_cookie(user_id, store).await {
-            Ok(cookie) => {
-                let headers = AppendHeaders([(SET_COOKIE, cookie)]);
-                dbg!(headers);
-                Ok(StatusCode::OK)
-            }
-            Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+            Ok(cookie) => (StatusCode::OK, [(SET_COOKIE, cookie.to_string())]),
+            Err(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                [(SET_COOKIE, "".to_owned())],
+            ),
         },
-        Err(_) => Err(StatusCode::UNAUTHORIZED),
+        Err(_) => (StatusCode::UNAUTHORIZED, [(SET_COOKIE, "".to_owned())]),
     }
 }
 
@@ -59,7 +58,7 @@ async fn get_session_cookie(
     let cookie_value = store
         .store_session(session)
         .await?
-        .ok_or(anyhow::anyhow!("No cookie value found"))?;
+        .ok_or_else(|| anyhow::anyhow!("No cookie value found"))?;
 
     let cookie = Cookie::build("id", cookie_value)
         .http_only(true)
@@ -72,7 +71,7 @@ async fn get_session_cookie(
     let cookie = jar
         .delta()
         .next()
-        .ok_or(anyhow::anyhow!("No cookie found"))?
+        .ok_or_else(|| anyhow::anyhow!("No cookie found"))?
         .clone();
 
     Ok(cookie)
